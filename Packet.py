@@ -27,7 +27,6 @@ class Packet:
         b[0] = (number + 1) & 0xFF
         return b
 
-    # Shortcuts for encoding numbers to various sizes
     @staticmethod
     def echar(number): return Packet.enumber(number, 1)
 
@@ -134,12 +133,12 @@ class Packet:
         self.pos += n
         return result
 
-    def get_break_string(self):
-        start = self.pos
-        while self.pos < len(self.data) and self.data[self.pos] != 255:
+    def get_break_string(self, break_byte=255):
+        result = ""
+        while self.pos < len(self.data) and self.data[self.pos] != break_byte:
+            result += chr(self.data[self.pos])
             self.pos += 1
-        result = self.data[start:self.pos]
-        self.pos += 1  # Skip past the 0xFF byte
+        self.pos += 1  # Skip past the break byte
         return result
 
     def next_chunk(self):
@@ -148,10 +147,11 @@ class Packet:
         self.pos += 1  # Skip past the 0xFF byte
 
     def get_end_string(self):
-        start = self.pos
+        result = ""
         while self.pos < len(self.data):
+            result += chr(self.data[self.pos])
             self.pos += 1
-        return self.data[start:self.pos]
+        return result
 
     def add_byte(self, x):
         if self.pos < len(self.data):
