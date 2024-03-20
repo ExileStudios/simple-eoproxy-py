@@ -1,12 +1,16 @@
 import socket
-from Packet import Packet
-from PacketProcessor import PacketProcessor
-from packet_constants import OP, AC
+from net.Packet import Packet
+from net.PacketProcessor import PacketProcessor
+from managers.GameManager import GameManager
+from net.packet_constants import OP, AC
 
 class EOSocket:
-    def __init__(self, sock=None, client=False):
+    def __init__(self, sock=None, client=False, proxy=None):
         self.processor = PacketProcessor(client)
         self.client = client
+        self.proxy = proxy
+        if client == False:
+            self.game_manager = GameManager(proxy)
         self.socket = sock if sock is not None else socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sendbuf = b''
         self.recvbuf = b''
@@ -23,7 +27,7 @@ class EOSocket:
 
     def accept(self):
         client_socket, _ = self.socket.accept()
-        return EOSocket(client_socket, True)
+        return EOSocket(client_socket, True, self.proxy)
 
     def close(self):
         if self.socket is not None:
@@ -31,6 +35,8 @@ class EOSocket:
             self.recvbuf = b""
             self.sendbuf = b""
             self.socket = None
+        if not self.client:
+            self.game_manager.shutdown()
 
     def is_closed(self):
         return self.socket is None
@@ -66,10 +72,6 @@ class EOSocket:
         decdata = self.processor.decode(rawdata)
         self.recvbuf = self.recvbuf[length + 2:]
         packet = Packet(decdata, self.client)
-        if self.client:
-            self.processor.scrape_client_packet(packet)
-        else:
-            self.processor.scrape_server_packet(packet)
         return packet
 
     def send_packet(self, packet):

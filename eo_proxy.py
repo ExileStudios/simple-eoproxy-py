@@ -1,6 +1,6 @@
-from EOProxy import EOProxy
+from net.EOProxy import EOProxy
 
-print("== Simple EOProxy Python v1.0.0 by Exile ==")
+print("== Simple EOProxy Python v1.2.2 by Exile ==")
 
 # Initialize EOProxy instance
 eoproxy = EOProxy()
