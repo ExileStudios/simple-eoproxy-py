@@ -1,4 +1,4 @@
-## Simple EOProxy Python v1.2.2
+## Simple EOProxy Python v1.2.3
 
 A Python adaptation of Julian Smythe's `simple-eoproxy` https://github.com/tehsausage/simple-eoproxy
 

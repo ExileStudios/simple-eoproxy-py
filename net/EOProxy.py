@@ -74,6 +74,31 @@ class EOProxy:
         except ModuleNotFoundError as e:
             print(f"No specific handler found for {packet_name}. Packet data: {' '.join(f'{x:02X}' for x in packet.data)}")
 
+    def filter_packet(self, packet, is_client):
+        direction = "C" if is_client else "S"
+        try:
+            op_name = OP(packet.family()).name
+        except ValueError:
+            op_name = f"Unknown_OP_{packet.family()}"
+
+        try:
+            ac_name = AC(packet.action()).name
+        except ValueError:
+            ac_name = f"Unknown_AC_{packet.action()}"
+
+        packet_name = f"{direction}_{op_name}_{ac_name}"
+        filter_module_name = f"filters.{packet_name}"
+
+        try:
+            filter_module = importlib.import_module(filter_module_name)
+            if hasattr(filter_module, 'filter'):
+                return filter_module.filter(self, packet)
+            else:
+                print(f"Filter function not found in module {filter_module_name}")
+                return True
+        except ModuleNotFoundError:
+            return True
+
     def wait_for_connect(self, local_address, local_port, remote_address, remote_port):
         listener = EOSocket(None, False, self)
         listener.bind(local_address, local_port)
@@ -133,18 +158,21 @@ class EOProxy:
     def forward_packets(self, from_socket, to_socket):
         packet = from_socket.get_packet()
         while packet is not None:
-            if from_socket == self.client:
-                self.before_client_packet_forward(packet, from_socket)
-            else:
-                self.before_server_packet_forward(packet, from_socket)
+            if self.filter_packet(packet, from_socket == self.client):
+                if from_socket == self.client:
+                    self.before_client_packet_forward(packet, from_socket)
+                else:
+                    self.before_server_packet_forward(packet, from_socket)
 
-            self.present_packet(packet, from_socket == self.client)
-            to_socket.send_packet(packet)
+                self.present_packet(packet, from_socket == self.client)
+                to_socket.send_packet(packet)
 
-            if from_socket == self.client:
-                self.after_client_packet_forward(packet, from_socket)
+                if from_socket == self.client:
+                    self.after_client_packet_forward(packet, from_socket)
+                else:
+                    self.after_server_packet_forward(packet, from_socket)
             else:
-                self.after_server_packet_forward(packet, from_socket)
+                print(f"Packet filtered and not forwarded: family={packet.family()}, action={packet.action()}, length={len(packet.data)}, data={' '.join(f'{x:02X}' for x in packet.data)}")
 
             packet = from_socket.get_packet()
 
